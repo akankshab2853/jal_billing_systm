@@ -1,259 +1,318 @@
-from django.http import JsonResponse
-from django.shortcuts import get_object_or_404
+from rest_framework import status, viewsets
 from rest_framework.response import Response
-from rest_framework import viewsets,status
-from bill_invoice.models import Invoice, Vendor
-from rest_framework.decorators import api_view
 
-from rest_framework import viewsets
-from .models import Invoice, Vendor
-from .serializers import InvoiceSerializer, VendorSerializer
+from .models import Billinvoice, Vendor
+from Billinvoice_Items.models import Billinvoiceitems
+from .serializers import BillInvoiceSerializer, VendorSerializer
+from Billinvoice_Items.serializers import BillItemSerializer
 
-# Create your views here.
-class InvoiceViewset(viewsets.ModelViewSet):
-    queryset = Invoice.objects.all()
-    serializer_class = InvoiceSerializer
-  
-  
-def get_queryset(self):
-        """Filter invoices based on query parameters (if any)."""
-        queryset = Invoice.objects.all()
-        vendor_id = self.request.query_params.get('vendor', None)
-        start_date = self.request.query_params.get('start_date', None)
-        end_date = self.request.query_params.get('end_date', None)
+class BillinvoiceAPI(viewsets.ModelViewSet):
+          queryset = Billinvoice.objects.prefetch_related('items')
+          serializer_class = BillInvoiceSerializer
 
-        if vendor_id:
-            queryset = queryset.filter(vendor__id=vendor_id)
-        if start_date and end_date:
-            queryset = queryset.filter(invoice_date__range=[start_date, end_date])
+          def list(self, request, *args, **kwargs):
+                    try:
+                              info = Billinvoice.objects.all()
+                              serializer = self.get_serializer(info, many=True)
+                              api_response = {
+                                        'status': 'success',
+                                        'code': status.HTTP_200_OK,
+                                        'message': 'All info',
+                                        'all_info': []
+                              }
 
-        return queryset
+                              # Manually adjusting response format
+                              for invoice in serializer.data:
+                                        # Extracting items to a separate field
+                                        items = invoice.pop('items', [])
+                                        # Adding items to the invoice object at the end
+                                        invoice['items'] = items
+                                        api_response['all_info'].append(invoice)
 
-def list(self, request, *args, **kwargs):
-        """Retrieve all invoices with filtering options."""
-        try:
-            queryset = self.get_queryset()
-            serializer = self.get_serializer(queryset, many=True)
-            return Response({
-                'status': 'success',
-                'code': status.HTTP_200_OK,
-                'message': 'All invoices fetched successfully',
-                'invoices': serializer.data
-            })
-        except Exception as e:
-            return self.handle_exception(e)
+                              return Response(api_response)
 
-def retrieve(self, request, *args, **kwargs):
-        """Retrieve a single invoice."""
-        try:
-            instance = self.get_object()
-            serializer = self.get_serializer(instance)
-            return Response({
-                'status': 'success',
-                'code': status.HTTP_200_OK,
-                'message': 'Invoice retrieved successfully',
-                'invoice_details': serializer.data
-            })
-        except Exception as e:
-            return self.handle_exception(e)
+                    except Exception as e:
+                              error_message = f'An error occurred while fetching info: {str(e)}'
+                              error_response = {
+                                        'status': 'error',
+                                        'code': status.HTTP_500_INTERNAL_SERVER_ERROR,
+                                        'message': error_message
+                              }
+                              return Response(error_response)
 
-def create(self, request, *args, **kwargs):
-        """Create a new invoice."""
-        try:
-            serializer = self.get_serializer(data=request.data)
-            serializer.is_valid(raise_exception=True)
-            serializer.save()
-            return Response({
-                'status': 'success',
-                'code': status.HTTP_201_CREATED,
-                'message': 'Invoice added successfully',
-                'new_invoice': serializer.data
-            })
-        except Exception as e:
-            return self.handle_exception(e)
+          def retrieve(self, request, *args, **kwargs):
+                    try:
+                              instance = self.get_object()
+                              serializer = self.get_serializer(instance)
+                              api_response = {
+                                        'status': 'success',
+                                        'code': status.HTTP_200_OK,
+                                        'message': 'Info fetched successfully',
+                                        'info_details': serializer.data,
+                              }
+                              return Response(api_response)
+                    except Exception as e:
+                              error_message = f'An error occurred while fetching info: {str(e)}'
+                              error_response = {
+                                        'status': 'error',
+                                        'code': status.HTTP_500_INTERNAL_SERVER_ERROR,
+                                        'message': error_message
+                              }
+                              return Response(error_response)
 
-def update(self, request, *args, **kwargs):
-        """Update an existing invoice."""
-        try:
-            instance = self.get_object()
-            serializer = self.get_serializer(instance, data=request.data)
-            serializer.is_valid(raise_exception=True)
-            serializer.save()
-            return Response({
-                'status': 'success',
-                'code': status.HTTP_200_OK,
-                'message': 'Invoice updated successfully',
-                'updated_invoice': serializer.data
-            })
-        except Exception as e:
-            return self.handle_exception(e)
+          def create(self, request, *args, **kwargs):
+                    try:
+                              # Extract the Billinvoice data from the request body
+                              billinvoice_data = request.data
+                              # Deserialize the Billinvoice data
+                              billinvoice_serializer = BillInvoiceSerializer(data=billinvoice_data)
 
-def partial_update(self, request, *args, **kwargs):
-        """Partially update an invoice."""
-        try:
-            instance = self.get_object()
-            serializer = self.get_serializer(instance, data=request.data, partial=True)
-            serializer.is_valid(raise_exception=True)
-            serializer.save()
-            return Response({
-                'status': 'success',
-                'code': status.HTTP_200_OK,
-                'message': 'Invoice partially updated successfully',
-                'updated_invoice': serializer.data
-            })
-        except Exception as e:
-            return self.handle_exception(e)
+                              # Check if the Billinvoice data is valid
+                              if billinvoice_serializer.is_valid():
+                                        # Save the Billinvoice instance
+                                        billinvoice = billinvoice_serializer.save()
 
-def destroy(self, request, *args, **kwargs):
-        """Delete an invoice."""
-        try:
-            instance = self.get_object()
-            instance.delete()
-            return Response({
-                'status': 'success',
-                'code': status.HTTP_200_OK,
-                'message': 'Invoice deleted successfully'
-            })
-        except Exception as e:
-            return self.handle_exception(e)
+                                        # Now handle the items data separately from the request body
+                                        items_data = request.data.get('items', [])  # Extract items data if available
 
-def handle_exception(self, e):
-        """Handle exceptions."""
-        return Response({
-            'status': 'error',
-            'code': status.HTTP_400_BAD_REQUEST,
-            'message': str(e)
-        })
-    
+                                        for item_data in items_data:
+                                                  # Add the invoice_number to each item before saving
+                                                  item_data['invoice_number'] = billinvoice.invoice_number
+                                                  # Create and save each item
+                                                  item_serializer = BillItemSerializer(data=item_data)
+                                                  if item_serializer.is_valid():
+                                                            item_serializer.save()
 
-class VendorViewset(viewsets.ModelViewSet):
-    queryset = Vendor.objects.all()
-    serializer_class = VendorSerializer
+                                        # Prepare the response in the desired format
+                                        response_data = BillInvoiceSerializer(billinvoice).data
+                                        response_data.pop('invoice_number', None)  # Remove invoice_number
 
-    def list(self, request, *args, **kwargs):
-        try:
-            info = Vendor.objects.all()  
-            serializer = self.get_serializer(info, many=True)
-            api_response = {
-                'status': 'success',
-                'code': status.HTTP_200_OK,
-                'message': 'All info',
-                'all_info': serializer.data,
-            }
-            return Response(api_response)
-        except Exception as e:
-            error_message = f'An error occurred while fetching info: {str(e)}'
-            error_response = {
-                'status': 'error',
-                'code': status.HTTP_500_INTERNAL_SERVER_ERROR,
-                'message': error_message
-            }
-            return Response(error_response)
+                                        # Add the 'items' field to the response
+                                        items = Billinvoiceitems.objects.filter(
+                                                  invoice_number=billinvoice.invoice_number)
+                                        item_serializer = BillItemSerializer(items, many=True)
+                                        response_data['items'] = item_serializer.data
 
-    def retrieve(self, request, *args, **kwargs):
-        try:
-            instance = self.get_object()
-            serializer = self.get_serializer(instance)
-            api_response = {
-                'status': 'success',
-                'code': status.HTTP_200_OK,
-                'message': 'Info fetched successfully',
-                'info_details': serializer.data,
-            }
-            return Response(api_response)
-        except Exception as e:
-            error_message = f'An error occurred while fetching info: {str(e)}'
-            error_response = {
-                'status': 'error',
-                'code': status.HTTP_500_INTERNAL_SERVER_ERROR,
-                'message': error_message
-            }
-            return Response(error_response)
+                                        # Prepare the final response
+                                        api_response = {
+                                                  'status': 'success',
+                                                  'code': status.HTTP_201_CREATED,
+                                                  'message': 'Invoice created successfully',
+                                                  'all_info': [response_data]
+                                        }
 
-    def create(self, request, *args, **kwargs):
-        try:
-            serializer = self.serializer_class(data=request.data)
-            serializer.is_valid(raise_exception=True)
-            serializer.save()
+                                        return Response(api_response, status=status.HTTP_201_CREATED)
 
-            api_response = {
-                'status': 'success',
-                'code': status.HTTP_201_CREATED,
-                'message': 'Info added successfully',
-                'new_info': serializer.data,
-            }
-            return Response(api_response)
-        except Exception as e:
-            error_message = f'Failed to add info: {str(e)}'
-            error_response = {
-                'status': 'error',
-                'code': status.HTTP_400_BAD_REQUEST,
-                'message': error_message
-            }
-            return Response(error_response)
+                              # If the Billinvoice data is not valid, return error
+                              return Response(
+                                        {'status': 'error', 'message': 'Invalid data',
+                                         'errors': billinvoice_serializer.errors},
+                                        status=status.HTTP_400_BAD_REQUEST
+                              )
 
-    def update(self, request, *args, **kwargs):
-        try:
-            instance = self.get_object()
-            serializer = self.get_serializer(instance, data=request.data)
-            serializer.is_valid(raise_exception=True)
-            serializer.save()
+                    except Exception as e:
+                              error_message = f'An error occurred while creating the invoice: {str(e)}'
+                              error_response = {
+                                        'status': 'error',
+                                        'code': status.HTTP_500_INTERNAL_SERVER_ERROR,
+                                        'message': error_message
+                              }
+                              return Response(error_response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-            api_response = {
-                'status': 'success',
-                'code': status.HTTP_200_OK,
-                'message': 'Info updated successfully',
-                'updated_info': serializer.data,
-            }
-            return Response(api_response)
-        except Exception as e:
-            error_message = f'Failed to update info: {str(e)}'
-            error_response = {
-                'status': 'error',
-                'code': status.HTTP_400_BAD_REQUEST,
-                'message': error_message
-            }
-            return Response(error_response)
+          def update(self, request, *args, **kwargs):
+                    try:
+                              instance = self.get_object()
+                              serializer = self.get_serializer(instance, data=request.data)
+                              serializer.is_valid(raise_exception=True)
+                              serializer.save()
 
-    def partial_update(self, request, *args, **kwargs):
-        try:
-            instance = self.get_object()
-            serializer = self.get_serializer(instance, data=request.data, partial=True)
-            serializer.is_valid(raise_exception=True)
-            serializer.save()
+                              api_response = {
+                                        'status': 'success',
+                                        'code': status.HTTP_200_OK,
+                                        'message': 'Info updated successfully',
+                                        'updated_info': serializer.data,
+                              }
+                              return Response(api_response)
+                    except Exception as e:
+                              error_message = f'Failed to update info: {str(e)}'
+                              error_response = {
+                                        'status': 'error',
+                                        'code': status.HTTP_400_BAD_REQUEST,
+                                        'message': error_message
+                              }
+                              return Response(error_response)
 
-            api_response = {
-                'status': 'success',
-                'code': status.HTTP_200_OK,
-                'message': 'Info updated successfully',
-                'updated_info': serializer.data,
-            }
-            return Response(api_response)
-        except Exception as e:
-            error_message = f'Failed to partially update info: {str(e)}'
-            error_response = {
-                'status': 'error',
-                'code': status.HTTP_400_BAD_REQUEST,
-                'message': error_message
-            }
-            return Response(error_response)
+          def partial_update(self, request, *args, **kwargs):
+                    try:
+                              instance = self.get_object()
+                              serializer = self.get_serializer(instance, data=request.data, partial=True)
+                              serializer.is_valid(raise_exception=True)
+                              serializer.save()
 
-    def destroy(self, request, *args, **kwargs):
-        try:
-            instance = self.get_object()
-            instance.delete()
+                              api_response = {
+                                        'status': 'success',
+                                        'code': status.HTTP_200_OK,
+                                        'message': 'Info updated successfully',
+                                        'updated_info': serializer.data,
+                              }
+                              return Response(api_response)
+                    except Exception as e:
+                              error_message = f'Failed to partially update info: {str(e)}'
+                              error_response = {
+                                        'status': 'error',
+                                        'code': status.HTTP_400_BAD_REQUEST,
+                                        'message': error_message
+                              }
+                              return Response(error_response)
 
-            api_response = {
-                'status': 'success',
-                'code': status.HTTP_200_OK,
-                'message': 'Info deleted successfully',
-            }
-            return Response(api_response)
-        except Exception as e:
-            error_message = f'Failed to delete info: {str(e)}'
-            error_response = {
-                'status': 'error',
-                'code': status.HTTP_400_BAD_REQUEST,
-                'message': error_message
-            }
-            return Response(error_response)
+          def destroy(self, request, *args, **kwargs):
+                    try:
+                              instance = self.get_object()
+                              instance.delete()
+
+                              api_response = {
+                                        'status': 'success',
+                                        'code': status.HTTP_200_OK,
+                                        'message': 'Info deleted successfully',
+                              }
+                              return Response(api_response)
+                    except Exception as e:
+                              error_message = f'Failed to delete info: {str(e)}'
+                              error_response = {
+                                        'status': 'error',
+                                        'code': status.HTTP_400_BAD_REQUEST,
+                                        'message': error_message
+                              }
+                              return Response(error_response)
+
+class VendorAPI(viewsets.ModelViewSet):
+          queryset = Vendor.objects.all()
+          serializer_class = VendorSerializer
+
+          def list(self, request, *args, **kwargs):
+                    try:
+                              info = Vendor.objects.all()
+                              serializer = self.get_serializer(info, many=True)
+                              api_response = {
+                                        'status': 'success',
+                                        'code': status.HTTP_200_OK,
+                                        'message': 'All info',
+                                        'all_info': serializer.data,
+                              }
+                              return Response(api_response)
+                    except Exception as e:
+                              error_message = f'An error occurred while fetching info: {str(e)}'
+                              error_response = {
+                                        'status': 'error',
+                                        'code': status.HTTP_500_INTERNAL_SERVER_ERROR,
+                                        'message': error_message
+                              }
+                              return Response(error_response)
+
+          def retrieve(self, request, *args, **kwargs):
+                    try:
+                              instance = self.get_object()
+                              serializer = self.get_serializer(instance)
+                              api_response = {
+                                        'status': 'success',
+                                        'code': status.HTTP_200_OK,
+                                        'message': 'Info fetched successfully',
+                                        'info_details': serializer.data,
+                              }
+                              return Response(api_response)
+                    except Exception as e:
+                              error_message = f'An error occurred while fetching info: {str(e)}'
+                              error_response = {
+                                        'status': 'error',
+                                        'code': status.HTTP_500_INTERNAL_SERVER_ERROR,
+                                        'message': error_message
+                              }
+                              return Response(error_response)
+
+          def create(self, request, *args, **kwargs):
+                    try:
+                              serializer = self.serializer_class(data=request.data)
+                              serializer.is_valid(raise_exception=True)
+                              serializer.save()
+
+                              api_response = {
+                                        'status': 'success',
+                                        'code': status.HTTP_201_CREATED,
+                                        'message': 'Info added successfully',
+                                        'new_info': serializer.data,
+                              }
+                              return Response(api_response)
+                    except Exception as e:
+                              error_message = f'Failed to add info: {str(e)}'
+                              error_response = {
+                                        'status': 'error',
+                                        'code': status.HTTP_400_BAD_REQUEST,
+                                        'message': error_message
+                              }
+                              return Response(error_response)
+
+          def update(self, request, *args, **kwargs):
+                    try:
+                              instance = self.get_object()
+                              serializer = self.get_serializer(instance, data=request.data)
+                              serializer.is_valid(raise_exception=True)
+                              serializer.save()
+
+                              api_response = {
+                                        'status': 'success',
+                                        'code': status.HTTP_200_OK,
+                                        'message': 'Info updated successfully',
+                                        'updated_info': serializer.data,
+                              }
+                              return Response(api_response)
+                    except Exception as e:
+                              error_message = f'Failed to update info: {str(e)}'
+                              error_response = {
+                                        'status': 'error',
+                                        'code': status.HTTP_400_BAD_REQUEST,
+                                        'message': error_message
+                              }
+                              return Response(error_response)
+
+          def partial_update(self, request, *args, **kwargs):
+                    try:
+                              instance = self.get_object()
+                              serializer = self.get_serializer(instance, data=request.data, partial=True)
+                              serializer.is_valid(raise_exception=True)
+                              serializer.save()
+
+                              api_response = {
+                                        'status': 'success',
+                                        'code': status.HTTP_200_OK,
+                                        'message': 'Info updated successfully',
+                                        'updated_info': serializer.data,
+                              }
+                              return Response(api_response)
+                    except Exception as e:
+                              error_message = f'Failed to partially update info: {str(e)}'
+                              error_response = {
+                                        'status': 'error',
+                                        'code': status.HTTP_400_BAD_REQUEST,
+                                        'message': error_message
+                              }
+                              return Response(error_response)
+
+          def destroy(self, request, *args, **kwargs):
+                    try:
+                              instance = self.get_object()
+                              instance.delete()
+
+                              api_response = {
+                                        'status': 'success',
+                                        'code': status.HTTP_200_OK,
+                                        'message': 'Info deleted successfully',
+                              }
+                              return Response(api_response)
+                    except Exception as e:
+                              error_message = f'Failed to delete info: {str(e)}'
+                              error_response = {
+                                        'status': 'error',
+                                        'code': status.HTTP_400_BAD_REQUEST,
+                                        'message': error_message
+                              }
+                              return Response(error_response)
