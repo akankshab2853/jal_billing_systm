@@ -6,4 +6,5 @@ urlpatterns = [
     path("staffdetails/<int:pk>/",StaffViewset.as_view({"get": "retrieve"}),name="staff-retrieve",),
     path("addstaff/", StaffViewset.as_view({"post": "create"}), name="vendor-create"),
     path("updatestaff/<int:pk>/",StaffViewset.as_view({"put": "update"}),name="staff-update",),
-    path("deletestaff/<int:pk>/",StaffViewset.as_view({"delete": "destroy"}),name="staff-delete",)]
+    path("deletestaff/<int:pk>/",StaffViewset.as_view({"delete": "destroy"}),name="staff-delete",),
+]

@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'bill_invoice',
     'Billinvoice_Items',
     'staff',
+    'report',
     'drf_yasg', 
     'corsheaders',
     'rest_framework',

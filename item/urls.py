@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import StockListAPIView, StockViewSet
+from .views import  DefectivestockViewSet, StockViewSet
 
 urlpatterns = [
     path('allstock/', StockViewSet.as_view({'get': 'list'}), name='stock-list'),
@@ -8,5 +8,11 @@ urlpatterns = [
     path('updatestock/<int:pk>/', StockViewSet.as_view({'put': 'update'}), name='stock-update'),
     path('deletestock/<int:pk>/', StockViewSet.as_view({'delete': 'destroy'}), name='stock-delete'),
     path('filterstock/', StockViewSet.as_view({'get': 'list'}), name='stock-filter'),
-    path('liststocks/', StockListAPIView.as_view(), name='stock-list'),
+    
+    path('DefectiveStock/allstock/',DefectivestockViewSet.as_view({'get': 'list'}), name='stock-list'),
+    path('DefectiveStock/stockdetails/<int:pk>/', DefectivestockViewSet.as_view({'get': 'retrieve'}), name='stock-retrieve'),
+    path('DefectiveStock/addstock/',DefectivestockViewSet.as_view({'post': 'create'}), name='stock-create'),
+    path('DefectiveStock/updatestock/<int:pk>/', DefectivestockViewSet.as_view({'put': 'update'}), name='stock-update'),
+    path('DefectiveStock/deletestock/<int:pk>/',DefectivestockViewSet.as_view({'delete': 'destroy'}), name='stock-delete'),
 ]
+    

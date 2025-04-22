@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Itemstock
+from .models import Defectivestock, Itemstock
 
 class StockSerializer(serializers.ModelSerializer):
     
@@ -9,3 +9,8 @@ class StockSerializer(serializers.ModelSerializer):
     class Meta:
         model = Itemstock
         fields = "__all__"
+
+class DefectivestockSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Defectivestock
+        fields = '__all__'
